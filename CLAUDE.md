@@ -46,7 +46,7 @@ Deleted entirely (recoverable via `git log` — they were committed once, then r
 
 ## Reconciling future upstream pulls
 
-This repo's `origin` still points at `karpathy/llm-council`. The user plans to push this to their own fork's remote later. If upstream changes land and get pulled/merged in (e.g. via a manual `git fetch upstream` + cherry-pick, since this fork's history has diverged structurally):
+This repo now lives at [MKamel1/llm-council](https://github.com/MKamel1/llm-council) (GitHub fork) as `origin` — `git push`/`git pull` with no args target it directly. `karpathy/llm-council` is wired up as `upstream` for pulling in future changes only (`git fetch upstream`), not for pushing. If upstream changes land and get pulled/merged in (e.g. via `git fetch upstream` + cherry-pick, since this fork's history has diverged structurally):
 
 - **Prompt/logic changes to `backend/council.py`** (Stage 2 ranking format, aggregate-ranking math, chairman prompt) are the most likely thing worth porting — translate the *prompt wording and stage logic*, not the code, into `SKILL.md`'s stage instructions and the relevant agent files' system prompts.
 - **New models added to `backend/config.py`'s `COUNCIL_MODELS`** — decide if it's worth adding as a new subagent here (only meaningful for models Claude Code can actually run: Anthropic models via `model:` frontmatter, or self-hosted/local models once that path exists — see below).
