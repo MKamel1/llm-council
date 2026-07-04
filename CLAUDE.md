@@ -55,9 +55,9 @@ This repo now lives at [MKamel1/llm-council](https://github.com/MKamel1/llm-coun
 
 ## Future: local models / other providers
 
-The user's stated plan is to add local models (e.g. via Ollama) or other API providers later. Two integration paths, not yet built:
+The user's stated plan is to add local models (e.g. via Ollama) or other API providers later. Tracked as [issue #2](https://github.com/MKamel1/llm-council/issues/2) — don't build until asked, that issue is the placeholder for when this conversation happens. Two integration paths noted there:
 
 1. **Still Claude-Code-native:** if Claude Code ever supports pinning a subagent to a non-Anthropic/local model, extend the same `.claude/agents/council-<name>.md` pattern.
 2. **Back to a real backend:** if local/other-provider models need to be called directly (most likely path — Claude Code subagents can only run Claude models), a lightweight script or small server would be needed alongside the skill, called out to for those specific council members while Opus/Sonnet stay on the subagent path. This would be a hybrid, not a full revival of the original OpenRouter backend.
 
-Don't build either until asked — this is a placeholder for when that conversation happens.
+**Also revisit then:** failure handling currently aborts the whole `/council` run on any agent failure (see `SKILL.md` → Failure Handling), on the reasoning that every agent shares one subscription today, so a failure is likely systemic. Once local models are in the mix, a single model's failure becomes a more plausible isolated event, and graceful degradation (continue with a noted gap, matching upstream's original philosophy) may be worth reconsidering.
