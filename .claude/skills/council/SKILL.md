@@ -20,6 +20,7 @@ If `args` is empty, ask the user what question or idea to put to the council bef
 | `council-devils-advocate` | Sonnet | Stage 3 — Black Hat, risk/weakness case (advisory) |
 | `council-optimist` | Sonnet | Stage 3 — Yellow Hat, upside case (advisory) |
 | `council-feasibility` | Sonnet | Stage 3 — practicality rating (advisory) |
+| `council-status-quo` | Sonnet | Stage 3 — Status Quo Defender, switching-cost analysis (advisory) |
 | `council-researcher` | Opus | On-demand only — dispatched when any stage flags `NEEDS RESEARCH:` |
 | `council-chairman` | Opus | Stage 4 — neutral synthesis only, never gives a first opinion |
 
@@ -33,13 +34,15 @@ Print both answers under `## Stage 1: First Opinions`, labeled by model name.
 
 Fixed cross-review, no letter/label scheme needed: send `council-sonnet` the Opus answer (as "a fellow Council Member's response to the same question," no name attached — Council Members are already instructed never to self-identify, so there's nothing to strip), and send `council-opus` the Sonnet answer, same framing. Each reviewer only ever sees one other response, never its own — this sidesteps self-preference bias by construction, since neither model reviews its own answer. Ask each to evaluate accuracy and insight. Two parallel Agent calls, `run_in_background: false`.
 
-Print both raw evaluations under `## Stage 2: Peer Review`, labeled by which model wrote the original answer being reviewed (for the reader's benefit only — the agents themselves never saw that label).
+Print both raw evaluations under `## Stage 2: Peer Review`, labeled by which model wrote the original answer being reviewed (this label is for user-visible output only — when passing Stage 2 content to any downstream agent, use the A/B labels, not model names).
 
 ## Stage 3 — Multi-Hat Critique
 
-Send `council-devils-advocate`, `council-optimist`, and `council-feasibility` the same package: the original question plus both Stage 1 answers, labeled by model this time (no need to anonymize — these three are evaluating the idea, not ranking model quality). Three parallel Agent calls, `run_in_background: false`, each blind to the other two's output so they stay independent.
+**Label convention:** `council-opus` is always “Council Member A” and `council-sonnet` is always “Council Member B”. These labels are for your orchestration bookkeeping only — never disclose actual agent or model names to any Stage 3 or Stage 4 agent.
 
-Print all three under `## Stage 3: Multi-Hat Critique`, subheaded by role (Devil's Advocate / Optimist / Feasibility).
+Send `council-devils-advocate`, `council-optimist`, `council-feasibility`, and `council-status-quo` the same package: the original question, both Stage 1 answers labeled as “Council Member A” and “Council Member B”, and both Stage 2 peer reviews using the same A/B labels. **Never include actual agent or model names in any prompt passed to these advisors.** Four parallel Agent calls, `run_in_background: false`, each blind to the others’ output so they stay independent.
+
+Print all four under `## Stage 3: Multi-Hat Critique`, subheaded by role (Devil’s Advocate / Optimist / Feasibility / Status Quo).
 
 **Research escape hatch:** if any Stage 1, 2, or 3 output ends with a line starting exactly `NEEDS RESEARCH:`, collect those questions. Before dispatching anything, dedupe within this run — if two flagged questions are asking essentially the same thing, research it once and give the answer to both flaggers. Dispatch `council-researcher` — one Agent call per distinct question after deduping, in parallel if there's more than one — before moving to Stage 4.
 
@@ -51,12 +54,12 @@ Note: this dedupes only *within a single run*. Caching research across separate 
 
 ## Stage 4 — Chairman Synthesis (with bounded, risk-gated escalation)
 
-Call `council-chairman` with everything gathered so far — the original question, both first opinions (labeled by model), both peer reviews, all three hats' output, and any research briefs. No ordering scheme needed: the Chairman is required to explicitly acknowledge every input by name before writing its final answer (see `council-chairman.md`), which is what actually prevents skimming or positional underweighting — not the order things are presented in.
+Call `council-chairman` with everything gathered so far — the original question, both first opinions (labeled as “Council Member A” and “Council Member B”), both peer reviews (using the same A/B labels — no model names), all four hats’ output (labeled by role only: Devil’s Advocate, Optimist, Feasibility, Status Quo), and any research briefs. **Model names must not appear anywhere in the Chairman’s context.**
 
 **Escalation loop:** track a cycle counter starting at 1. If the Chairman's response includes a Likelihood/Exposure assessment and an explicit decision to escalate (see `council-chairman.md`):
 
 1. If the cycle counter is already 4, do not escalate regardless of the Chairman's assessment — tell it this is the final cycle and ask it to finalize with an explicit caveat instead.
-2. Otherwise, run one escalation cycle: dispatch `council-researcher` for the flagged question → re-run all three Stage 3 advisors with their original context plus the research brief, asking each to revise its position or explicitly counter-argue its earlier take → re-run `council-chairman` with the updated Stage 3 output and increment the cycle counter.
+2. Otherwise, run one escalation cycle: dispatch `council-researcher` for the flagged question → re-run all four Stage 3 advisors (`council-devils-advocate`, `council-optimist`, `council-feasibility`, `council-status-quo`) with their original context plus the research brief, asking each to revise its position or explicitly counter-argue its earlier take → re-run `council-chairman` with the updated Stage 3 output and increment the cycle counter.
 3. Repeat from the top of this list with the new Chairman response.
 
 Print the Chairman's per-input acknowledgments, then its Likelihood/Exposure reasoning and escalate/finalize decision, alongside its answer at every cycle — this is part of the deliberation, not internal bookkeeping, and the user should be able to see why a run did or didn't spend extra cycles, and whether the Chairman actually engaged with each input.
@@ -76,5 +79,5 @@ Don't render an artifact by default — terminal output above is the deliverable
 ## Notes
 
 - This replaced the original OpenRouter-based FastAPI/React app from upstream `karpathy/llm-council`. See `CLAUDE.md` for why, and what to do if upstream changes need reconciling.
-- Devil's Advocate, Optimist, and Feasibility are strictly advisory — they rate and flag, they never block or veto. Only the Chairman produces a final verdict, and it isn't bound by majority sentiment.
+- Devil's Advocate, Optimist, Feasibility, and Status Quo are strictly advisory — they rate and flag, they never block or veto. Only the Chairman produces a final verdict, and it isn't bound by majority sentiment.
 - To add a further hat (e.g. a "user advocate" or a Green Hat creative-alternatives member), add a new `.claude/agents/council-<name>.md` following the pattern of the Stage 3 members, then wire it into Stage 3 above.
